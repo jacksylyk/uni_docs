@@ -4,9 +4,8 @@ from .models import Document, DocumentVersion
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ('title', 'doc_type', 'created_by', 'created_at')
+    list_display = ('title', 'created_by', 'created_at')
     search_fields = ('title',)
-    list_filter = ('doc_type',)
 
 
 @admin.register(DocumentVersion)

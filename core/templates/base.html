@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Документооборот Университета{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Tailwind CDN (если не используешь свой билд) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-white shadow mb-6">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">
+                <a href="{% url 'index' %}" class="text-blue-600 hover:underline">Документооборот</a>
+            </h1>
+            {% if user.is_authenticated %}
+                <div>
+                    <span class="text-sm text-gray-700 mr-4">Привет, {{ user.username }}</span>
+                    <a href="{% url 'users:logout' %}" class="text-red-600 hover:underline text-sm">Выйти</a>
+                </div>
+            {% else %}
+                <a href="{% url 'users:login' %}" class="text-blue-600 hover:underline text-sm">Войти</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-200 mt-6 py-4 text-center text-sm text-gray-600">
+        © {{ year|default:"2025" }} Университетский документооборот. Все права защищены.
+    </footer>
+
+</body>
+</html>

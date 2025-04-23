@@ -1,0 +1,16 @@
+asgiref==3.8.1
+certifi==2025.1.31
+diff-match-patch==20241021
+Django==5.2
+django-elasticsearch-dsl==8.0
+elastic-transport==8.17.1
+elasticsearch==8.18.0
+elasticsearch-dsl==8.18.0
+lxml==5.4.0
+python-dateutil==2.9.0.post0
+python-docx==1.1.2
+six==1.17.0
+sqlparse==0.5.3
+typing_extensions==4.13.2
+tzdata==2025.2
+urllib3==2.4.0

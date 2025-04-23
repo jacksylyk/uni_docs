@@ -1,9 +1,12 @@
 from django.urls import path
-from . import views
+from .views import (
+    DocumentUploadView, DocumentDetailView,
+    DocumentListView, CompareVersionsView
+)
 
 urlpatterns = [
-    path('upload/', views.upload_document, name='upload_document'),
-    # path('', views.document_list, name='document_list'),
-    # path('document/<int:doc_id>/', views.document_detail, name='document_detail'),
-    # path('document/<int:doc_id>/version/<int:version_id>/', views.document_version_detail, name='document_version_detail'),
+    path('', DocumentListView.as_view(), name='document_list'),
+    path('upload/', DocumentUploadView.as_view(), name='upload_document'),
+    path('<int:pk>/', DocumentDetailView.as_view(), name='document_detail'),
+    path('<int:document_id>/compare/<int:version_number>/', CompareVersionsView.as_view(), name='compare_versions'),
 ]

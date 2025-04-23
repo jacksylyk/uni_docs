@@ -1,41 +1,87 @@
-from django.shortcuts import render, redirect
+import difflib
+from django.utils.html import escape
+
+from django.views import View
+from django.views.generic import DetailView, ListView, FormView
+from django.urls import reverse_lazy
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Document, DocumentVersion
-from .utils import extract_text_from_docx
-from .forms import DocumentUploadForm  # создадим форму чуть позже
-from django.contrib.auth.decorators import login_required
+from .forms import DocumentUploadForm
+from .utils import extract_text_from_docx, get_word_diff
 
-@login_required
-def upload_document(request):
-    if request.method == 'POST':
-        form = DocumentUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            doc = form.cleaned_data['document']
-            file = form.cleaned_data['file']
-            comment = form.cleaned_data['comment']
+class DocumentListView(LoginRequiredMixin, ListView):
+    model = Document
+    template_name = 'documents/list.html'
+    context_object_name = 'documents'
 
-            # если документа ещё нет — создаём
-            document, created = Document.objects.get_or_create(
-                title=doc,
-                defaults={'created_by': request.user}
-            )
 
-            # определим номер версии
-            latest_version = document.versions.first()
-            next_version = latest_version.version_number + 1 if latest_version else 1
+class DocumentDetailView(LoginRequiredMixin, DetailView):
+    model = Document
+    template_name = 'documents/detail.html'
+    context_object_name = 'document'
 
-            # извлечение текста
-            text = extract_text_from_docx(file)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['versions'] = self.object.versions.all()
+        return context
 
-            # создаём версию
-            version = DocumentVersion.objects.create(
-                document=document,
-                version_number=next_version,
-                file=file,
-                uploaded_by=request.user,
-                comment=comment,
-                content_text=text,
-            )
-            return redirect('document_detail', pk=document.pk)
-    else:
-        form = DocumentUploadForm()
-    return render(request, 'documents/upload.html', {'form': form})
+
+class DocumentUploadView(LoginRequiredMixin, FormView):
+    form_class = DocumentUploadForm
+    template_name = 'documents/upload.html'
+    success_url = reverse_lazy('document_list')
+
+    def form_valid(self, form):
+        doc_title = form.cleaned_data['document']
+        file = form.cleaned_data['file']
+        comment = form.cleaned_data['comment']
+
+        document, created = Document.objects.get_or_create(
+            title=doc_title,
+            defaults={'created_by': self.request.user}
+        )
+        latest_version = document.versions.first()
+        next_version = latest_version.version_number + 1 if latest_version else 1
+
+        content = extract_text_from_docx(file)
+
+        DocumentVersion.objects.create(
+            document=document,
+            version_number=next_version,
+            file=file,
+            uploaded_by=self.request.user,
+            comment=comment,
+            content_text=content
+        )
+
+        return redirect('document_detail', pk=document.pk)
+
+class CompareVersionsView(LoginRequiredMixin, View):
+    template_name = 'documents/compare.html'
+
+    def get(self, request, document_id, version_number):
+        document = get_object_or_404(Document, pk=document_id)
+        current = get_object_or_404(DocumentVersion, document=document, version_number=version_number)
+        previous = document.versions.filter(version_number__lt=version_number).first()
+
+        if not previous:
+            return render(request, self.template_name, {
+                'document': document,
+                'message': "Это первая версия, сравнивать не с чем."
+            })
+
+        diff_lines = []
+
+        prev_lines = previous.content_text.splitlines()
+        curr_lines = current.content_text.splitlines()
+
+        for i in range(max(len(prev_lines), len(curr_lines))):
+            a = prev_lines[i] if i < len(prev_lines) else ''
+            b = curr_lines[i] if i < len(curr_lines) else ''
+            diff_lines.append(get_word_diff(a, b))
+
+        return render(request, self.template_name, {
+            'document': document,
+            'diff': diff_lines
+        })

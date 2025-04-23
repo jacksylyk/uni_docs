@@ -1,0 +1,12 @@
+<h2>{{ document.title }}</h2>
+<p>Автор: {{ document.created_by }}</p>
+<h3>Версии</h3>
+<ul>
+  {% for v in versions %}
+    <li>
+      Версия {{ v.version_number }} —
+      {{ v.uploaded_at|date:"Y-m-d H:i" }} —
+      <a href="{% url 'compare_versions' document.id v.version_number %}">Сравнить</a>
+    </li>
+  {% endfor %}
+</ul>

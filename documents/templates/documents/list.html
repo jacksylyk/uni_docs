@@ -1,0 +1,8 @@
+<h2>Все документы</h2>
+<ul>
+  {% for doc in documents %}
+    <li><a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a></li>
+  {% endfor %}
+</ul>
+
+<a href="{% url 'upload_document' %}">Загрузить новый документ</a>

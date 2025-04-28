@@ -101,7 +101,7 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
     def form_valid(self, form):
         document = self.get_object()
         document.title = form.cleaned_data['title']
-        document.comment = form.cleaned_data['comment']
+        document.comment = form.cleaned_data.get('comment', '')
         document.save()
 
         # Если был загружен новый файл, создаем новую версию

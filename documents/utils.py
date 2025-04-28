@@ -23,3 +23,15 @@ def get_word_diff(a, b):
             result.extend([f'<span class="added">{w}</span>' for w in b.split()[j1:j2]])
 
     return ' '.join(result)
+
+# import openai
+#
+# openai.api_key = 'your-openai-api-key'
+#
+# def summarize_document(text):
+#     response = openai.Completion.create(
+#         model="text-davinci-003",
+#         prompt="Summarize the following document: " + text,
+#         max_tokens=200
+#     )
+#     return response.choices[0].text.strip()

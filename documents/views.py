@@ -7,7 +7,7 @@ from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Document, DocumentVersion
-from .forms import DocumentUploadForm
+from .forms import DocumentUploadForm, DocumentUpdateForm
 from .utils import extract_text_from_docx, get_word_diff
 
 class DocumentListView(LoginRequiredMixin, ListView):
@@ -85,3 +85,39 @@ class CompareVersionsView(LoginRequiredMixin, View):
             'document': document,
             'diff': diff_lines
         })
+
+class DocumentUpdateView(LoginRequiredMixin, FormView):
+    form_class = DocumentUpdateForm
+    template_name = 'documents/update.html'
+
+    def get_object(self, **kwargs):
+        return get_object_or_404(Document, pk=self.kwargs['pk'])
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['document'] = self.get_object()
+        return context
+
+    def form_valid(self, form):
+        document = self.get_object()
+        document.title = form.cleaned_data['title']
+        document.comment = form.cleaned_data['comment']
+        document.save()
+
+        # Если был загружен новый файл, создаем новую версию
+        new_file = self.request.FILES.get('file')
+        if new_file:
+            latest_version = document.versions.first()
+            next_version = latest_version.version_number + 1 if latest_version else 1
+            content = extract_text_from_docx(new_file)
+
+            DocumentVersion.objects.create(
+                document=document,
+                version_number=next_version,
+                file=new_file,
+                uploaded_by=self.request.user,
+                comment=form.cleaned_data.get('comment', ''),
+                content_text=content
+            )
+
+        return redirect('document_detail', pk=document.pk)

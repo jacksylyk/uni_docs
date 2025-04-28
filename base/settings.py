@@ -130,3 +130,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_ROOT = BASE_DIR / 'media'
 MEDIA_URL = '/media/'
+
+AWS_ACCESS_KEY_ID = 'minioaccesskey'
+AWS_SECRET_ACCESS_KEY = 'miniosecretkey'
+AWS_STORAGE_BUCKET_NAME = 'documents'
+AWS_S3_ENDPOINT_URL = 'http://localhost:9000'  # URL MinIO
+AWS_S3_REGION_NAME = 'us-east-1'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_DEFAULT_ACL = None
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'

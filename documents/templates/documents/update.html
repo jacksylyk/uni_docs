@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h2>Редактировать документ: {{ document.title }}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <label for="file">Загрузить новый файл (если нужно):</label>
+        <input type="file" name="file" id="file">
+        <button type="submit">Обновить документ</button>
+    </form>
+{% endblock %}

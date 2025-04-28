@@ -1,7 +1,7 @@
 <h2>Все документы</h2>
 <ul>
   {% for doc in documents %}
-    <li><a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a></li>
+    <li><a href="{% url 'document_detail' doc.pk %}">{{ doc.title }}</a> <a href="{% url 'document_edit' doc.id %}">Обновить</a></li>
   {% endfor %}
 </ul>
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Document, DocumentVersion
+from .models import Document, DocumentVersion, Category
 
 
 @admin.register(Document)
@@ -13,3 +13,7 @@ class DocumentVersionAdmin(admin.ModelAdmin):
     list_display = ('document', 'version_number', 'created_at')
     search_fields = ('document__title',)
     ordering = ('-created_at',)
+
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')

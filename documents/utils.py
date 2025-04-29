@@ -1,4 +1,6 @@
+from django.conf import settings
 from docx import Document as DocxDocument
+from openai import OpenAI
 
 def extract_text_from_docx(file):
     doc = DocxDocument(file)
@@ -24,14 +26,22 @@ def get_word_diff(a, b):
 
     return ' '.join(result)
 
-# import openai
-#
-# openai.api_key = 'your-openai-api-key'
-#
-# def summarize_document(text):
-#     response = openai.Completion.create(
-#         model="text-davinci-003",
-#         prompt="Summarize the following document: " + text,
-#         max_tokens=200
-#     )
-#     return response.choices[0].text.strip()
+def classify_document_with_openai(content, categories):
+    category_list = "\n".join([category.name for category in categories])
+    openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    response = openai_client.responses.create(
+        model="gpt-3.5-turbo",
+        instructions=f"Классифицируй документ по следующему тексту и существующим категориям:\n{category_list}. Ответь только имя категории точь в точь такую же как в списке",
+        input=f"Текст документа:\n{content}\nКакая категория?",
+    )
+
+    category = response.output_text
+    return
+from docx2pdf import convert
+import os
+
+def convert_docx_to_pdf_windows(input_path: str, output_dir: str) -> str:
+    convert(input_path, output_dir)
+    filename = os.path.basename(input_path)
+    pdf_filename = os.path.splitext(filename)[0] + ".pdf"
+    return os.path.join(output_dir, pdf_filename)

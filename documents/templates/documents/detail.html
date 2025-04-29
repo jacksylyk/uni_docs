@@ -1,12 +1,73 @@
-<h2>{{ document.title }}</h2>
-<p>Автор: {{ document.created_by }}</p>
-<h3>Версии</h3>
-<ul>
-  {% for v in versions %}
-    <li>
-      Версия {{ v.version_number }} —
-      {{ v.uploaded_at|date:"Y-m-d H:i" }} —
-      <a href="{% url 'compare_versions' document.id v.version_number %}">Сравнить</a>
-    </li>
-  {% endfor %}
-</ul>
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-lg">
+        <!-- Header Section -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">[{{ document.category }}] {{ document.title }}</h2>
+                <p class="text-gray-500 text-sm mt-1">Автор: <span class="font-medium">{{ document.created_by }} </span> | Последняя версия: {{ last_version.version_number }} ({{ last_version.uploaded_at|date:"Y-m-d H:i" }})</p>
+            </div>
+            <div class="flex space-x-3">
+                <a href="{% url 'update_document' document.id %}"
+                   class="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                    Обновить
+                </a>
+                <a href="{% url 'get_presigned_url' document.id last_version.version_number %}"
+                   class="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                   target="_blank">
+                    Скачать
+                </a>
+            </div>
+        </div>
+
+        <!-- Document Preview (PDF Only) -->
+        {% if ".pdf" in last_version.file.filename and last_version.file %}
+            <div class="mb-8">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Просмотр документа</h3>
+                <div class="border rounded-lg overflow-hidden shadow-sm">
+                    <iframe src="{{ last_version.file.url }}" class="w-full h-[600px]" frameborder="0"></iframe>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Version History Toggle -->
+        <div class="mt-6">
+            <button id="toggleVersions" class="flex items-center text-blue-600 hover:text-blue-800 font-medium transition">
+                <span>История версий</span>
+                <svg class="w-5 h-5 ml-2 transform transition-transform" id="toggleIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div id="versionHistory" class="hidden mt-4">
+                <ul class="space-y-3">
+                    {% for v in versions %}
+                        <li class="flex items-center justify-between bg-gray-50 p-4 rounded-lg shadow-sm">
+                            <div>
+                                <span class="font-medium text-gray-700">Версия {{ v.version_number }}</span>
+                                <span class="text-gray-500 text-sm ml-2">{{ v.uploaded_at|date:"Y-m-d H:i" }}</span>
+                            </div>
+                            <div class="flex space-x-3">
+                                <a href="{% url 'compare_versions' document.id v.version_number %}"
+                                   class="text-blue-600 hover:underline text-sm">Сравнить</a>
+                                <a href="{% url 'get_presigned_url' document.id v.version_number %}"
+                                   class="text-green-600 hover:underline text-sm"
+                                   target="_blank">Скачать</a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Toggle -->
+    <script>
+        document.getElementById('toggleVersions').addEventListener('click', function() {
+            const versionHistory = document.getElementById('versionHistory');
+            const toggleIcon = document.getElementById('toggleIcon');
+            versionHistory.classList.toggle('hidden');
+            toggleIcon.classList.toggle('rotate-180');
+        });
+    </script>
+{% endblock %}

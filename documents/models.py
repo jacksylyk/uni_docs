@@ -21,6 +21,7 @@ class DocumentVersion(models.Model):
     uploaded_at = models.DateTimeField(default=timezone.now)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     comment = models.TextField(blank=True, null=True)
+    ai_description = models.TextField(blank=True, null=True)
     content_text = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(default=timezone.now)
 

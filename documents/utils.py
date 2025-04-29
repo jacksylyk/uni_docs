@@ -36,7 +36,8 @@ def classify_document_with_openai(content, categories):
     )
 
     category = response.output_text
-    return
+    return category
+
 from docx2pdf import convert
 import os
 
@@ -45,3 +46,22 @@ def convert_docx_to_pdf_windows(input_path: str, output_dir: str) -> str:
     filename = os.path.basename(input_path)
     pdf_filename = os.path.splitext(filename)[0] + ".pdf"
     return os.path.join(output_dir, pdf_filename)
+
+def get_diff_description(prev_text: str, new_text: str) -> str:
+    prompt = f"""Проанализируй два текста документа и кратко опиши, что было изменено:
+                
+                --- Предыдущая версия ---
+                {prev_text}
+                
+                --- Новая версия ---
+                {new_text}
+                
+                Опиши изменения на русском языке, кратко и по делу:"""
+    openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    response = openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2
+    )
+
+    return response.choices[0].message.content.strip()

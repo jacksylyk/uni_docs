@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Document, DocumentVersion, Category
 from .forms import DocumentUploadForm, DocumentUpdateForm
-from .utils import extract_text_from_docx, get_word_diff, classify_document_with_openai
+from .utils import extract_text_from_docx, get_word_diff, classify_document_with_openai, get_diff_description
 import boto3
 
 def get_presigned_url(request, document_id, version_number):
@@ -20,13 +20,13 @@ def get_presigned_url(request, document_id, version_number):
         file_key = version.file.name
 
         s3 = boto3.client('s3',
-                          endpoint_url=settings.AWS_S3_ENDPOINT_URL,
-                          aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                          aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                          endpoint_url=settings.STORAGES['default']['OPTIONS']['endpoint_url'],
+                          aws_access_key_id=settings.STORAGES['default']['OPTIONS']['access_key'],
+                          aws_secret_access_key=settings.STORAGES['default']['OPTIONS']['secret_key'],
                           )
 
         presigned_url = s3.generate_presigned_url('get_object', Params={
-            'Bucket': settings.AWS_STORAGE_BUCKET_NAME,
+            'Bucket': settings.STORAGES['default']['OPTIONS']['bucket_name'],
             'Key': file_key,
         }, ExpiresIn=300)  # 5 минут
         return redirect(presigned_url)
@@ -165,7 +165,11 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
         if new_file:
             latest_version = document.versions.first()
             next_version = latest_version.version_number + 1 if latest_version else 1
-            content = extract_text_from_docx(new_file)
+            new_content = extract_text_from_docx(new_file)
+
+            ai_description = ""
+            if latest_version and latest_version.content_text:
+                ai_description = get_diff_description(latest_version.content_text, new_content)
 
             DocumentVersion.objects.create(
                 document=document,
@@ -173,7 +177,8 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
                 file=new_file,
                 uploaded_by=self.request.user,
                 comment=form.cleaned_data.get('comment', ''),
-                content_text=content
+                content_text=new_content,
+                ai_description=ai_description
             )
 
         return redirect('document_detail', pk=document.pk)

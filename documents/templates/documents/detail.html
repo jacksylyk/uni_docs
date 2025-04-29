@@ -7,6 +7,7 @@
             <div>
                 <h2 class="text-2xl font-bold text-gray-800">[{{ document.category }}] {{ document.title }}</h2>
                 <p class="text-gray-500 text-sm mt-1">Автор: <span class="font-medium">{{ document.created_by }} </span> | Последняя версия: {{ last_version.version_number }} ({{ last_version.uploaded_at|date:"Y-m-d H:i" }})</p>
+
             </div>
             <div class="flex space-x-3">
                 <a href="{% url 'update_document' document.id %}"
@@ -19,6 +20,15 @@
                     Скачать
                 </a>
             </div>
+
+        </div>
+        <div>
+            {% if last_version.ai_description %}
+                <div class="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md shadow-sm">
+                    <h3 class="font-semibold text-yellow-700 mb-1">Изменения, определённые ИИ:</h3>
+                    <p class="text-sm text-yellow-800 whitespace-pre-line">{{ last_version.ai_description }}</p>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Document Preview (PDF Only) -->

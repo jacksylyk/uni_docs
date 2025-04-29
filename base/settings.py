@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
-
+from decouple import config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -141,7 +141,7 @@ STORAGES = {
             "bucket_name": "documents",
             "endpoint_url": "http://localhost:9000",
             "region_name": "us-east-1",
-            "addressing_style": "path",  # очень важно для MinIO
+            "addressing_style": "path",
             "signature_version": "s3v4",
         },
     },
@@ -150,11 +150,7 @@ STORAGES = {
     },
 }
 AWS_QUERYSTRING_AUTH = False
-AWS_ACCESS_KEY_ID = "minioadmin"
-AWS_SECRET_ACCESS_KEY = "minioadmin"
-AWS_STORAGE_BUCKET_NAME = "documents"
-AWS_S3_ENDPOINT_URL = "http://localhost:9000"
 AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 
-OPENAI_API_KEY = 'open-ai-secret-key'
+OPENAI_API_KEY = config('OPENAI_API_KEY')

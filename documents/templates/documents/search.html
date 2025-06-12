@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <!-- Заголовок страницы -->
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Поиск по документам</h1>
+
+    <!-- Форма поиска -->
+    <form method="get" action="{% url 'document_search' %}" class="mb-10">
+        <div class="flex items-center border rounded-lg overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-blue-500">
+            <input 
+                type="text" 
+                name="q" 
+                placeholder="Введите запрос..." 
+                value="{{ query }}" 
+                class="flex-1 px-4 py-3 outline-none text-gray-700"
+            >
+            <button 
+                type="submit" 
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 font-medium transition-colors duration-300"
+            >
+                Поиск
+            </button>
+        </div>
+    </form>
+
+    {% if query %}
+        <!-- Результаты поиска -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">
+                Результаты для "<span class="text-blue-600">{{ query }}</span>"
+            </h2>
+
+            {% if results %}
+                <ul class="space-y-4">
+                {% for hit in results %}
+                    <li class="p-4 rounded-lg hover:bg-gray-50 transition-colors duration-200 border border-gray-100">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <a href="{% url 'document_detail' hit.document_id %}" class="text-blue-600 hover:text-blue-800 hover:underline transition-colors">
+                                {{ hit.title }}
+                            </a>
+                            <span class="text-gray-500 text-sm ml-2">Версия: {{ hit.version_number }}</span>
+                        </h3>
+                        <p class="text-sm text-gray-600 mb-2">Автор: {{ hit.author }}</p>
+                        <p class="text-gray-700">{{ hit.content_text|truncatechars:200 }}</p>
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-gray-500 text-lg">Ничего не найдено</p>
+                    <p class="text-gray-400 text-sm mt-1">Попробуйте изменить запрос или поискать что-то другое</p>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

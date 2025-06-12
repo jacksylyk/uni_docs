@@ -1,6 +1,6 @@
 from django import forms
 
-from documents.models import Document
+from documents.models import Document, DocumentVersion
 
 
 class DocumentUploadForm(forms.Form):
@@ -10,5 +10,5 @@ class DocumentUploadForm(forms.Form):
 
 class DocumentUpdateForm(forms.ModelForm):
     class Meta:
-        model = Document
-        fields = ['title']
+        model = DocumentVersion
+        fields = ['file']

@@ -38,15 +38,6 @@ def classify_document_with_openai(content, categories):
     category = response.output_text
     return category
 
-from docx2pdf import convert
-import os
-
-def convert_docx_to_pdf_windows(input_path: str, output_dir: str) -> str:
-    convert(input_path, output_dir)
-    filename = os.path.basename(input_path)
-    pdf_filename = os.path.splitext(filename)[0] + ".pdf"
-    return os.path.join(output_dir, pdf_filename)
-
 def get_diff_description(prev_text: str, new_text: str) -> str:
     prompt = f"""Проанализируй два текста документа и кратко опиши, что было изменено:
                 

@@ -1,11 +1,12 @@
-import difflib
-
+from .document_index import DocumentVersionDocument
+from django.db.models import Q
+from django_elasticsearch_dsl.search import Search
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseForbidden
 from django.utils.html import escape
 
 from django.views import View
-from django.views.generic import DetailView, ListView, FormView
+from django.views.generic import DetailView, ListView, TemplateView, FormView
 from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -28,7 +29,7 @@ def get_presigned_url(request, document_id, version_number):
         presigned_url = s3.generate_presigned_url('get_object', Params={
             'Bucket': settings.STORAGES['default']['OPTIONS']['bucket_name'],
             'Key': file_key,
-        }, ExpiresIn=300)  # 5 минут
+        }, ExpiresIn=300)
         return redirect(presigned_url)
     except DocumentVersion.DoesNotExist:
         return HttpResponseForbidden("Документ не найден")
@@ -37,7 +38,7 @@ class DocumentListView(LoginRequiredMixin, ListView):
     model = Document
     template_name = 'documents/list.html'
     context_object_name = 'documents'
-    paginate_by = 10  # если нужна пагинация
+    paginate_by = 10
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('category')
@@ -50,7 +51,7 @@ class DocumentListView(LoginRequiredMixin, ListView):
         if status:
             queryset = queryset.filter(status=status)
         if search:
-            queryset = queryset.filter(Q(title__icontains=search) | Q(content__icontains=search))
+            queryset = queryset.filter(title__icontains=search)
 
         return queryset
 
@@ -58,7 +59,6 @@ class DocumentListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['categories'] = Category.objects.all()
         context['selected_category'] = self.request.GET.get('category', '')
-        context['selected_status'] = self.request.GET.get('status', '')
         context['search_query'] = self.request.GET.get('search', '')
         return context
 
@@ -156,11 +156,8 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
 
     def form_valid(self, form):
         document = self.get_object()
-        document.title = form.cleaned_data['title']
-        document.comment = form.cleaned_data.get('comment', '')
         document.save()
 
-        # Если был загружен новый файл, создаем новую версию
         new_file = self.request.FILES.get('file')
         if new_file:
             latest_version = document.versions.first()
@@ -182,3 +179,23 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
             )
 
         return redirect('document_detail', pk=document.pk)
+
+class DocumentSearchView(LoginRequiredMixin, TemplateView):
+    template_name = 'documents/search.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        query = self.request.GET.get('q')
+        results = []
+
+        if query:
+            search = DocumentVersionDocument.search().query(
+                "multi_match",
+                query=query,
+                fields=['content_text', 'document_title', 'author']
+            )
+            results = search.execute()
+
+        context['query'] = query
+        context['results'] = results
+        return context

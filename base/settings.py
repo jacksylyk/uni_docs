@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'search',
     'documents',
     'storages',
+    'django_elasticsearch_dsl'
 ]
 
 MIDDLEWARE = [
@@ -154,3 +155,9 @@ AWS_S3_FILE_OVERWRITE = False
 AWS_DEFAULT_ACL = None
 
 OPENAI_API_KEY = config('OPENAI_API_KEY')
+
+ELASTICSEARCH_DSL = {
+    'default': {
+        'hosts': 'http://localhost:9200',
+    },
+}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <div class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow">
+        <h2 class="text-lg font-bold mb-4">Согласование документа: {{ document.title }}</h2>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <div>
+                {{ form.decision.label_tag }}<br>
+                {{ form.decision }}
+            </div>
+
+            <div>
+                {{ form.comment.label_tag }}
+                {{ form.comment }}
+            </div>
+
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                Отправить решение
+            </button>
+        </form>
+    </div>
+{% endblock %}

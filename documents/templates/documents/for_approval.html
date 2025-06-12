@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 class="text-xl font-bold mb-4">Документы на согласование</h2>
+
+    {% if documents %}
+        <ul class="space-y-4">
+            {% for doc in documents %}
+                <li class="border p-4 rounded bg-white shadow">
+                    <a href="{% url 'document_approve_view' doc.id %}" class="text-blue-600 hover:underline font-semibold">
+                        {{ doc.title }}
+                    </a>
+                    <p class="text-sm text-gray-500">Автор: {{ doc.created_by.get_full_name }} • Отправлен: {{ doc.sent_for_review_at|date:"d.m.Y H:i" }}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Нет документов, ожидающих вашего согласования.</p>
+    {% endif %}
+{% endblock %}

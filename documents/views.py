@@ -1,19 +1,41 @@
+from django.contrib import messages
+from django.utils import timezone
+
+from users.models import Position
 from .document_index import DocumentVersionDocument
-from django.db.models import Q
+from django.db.models import Q, F
 from django_elasticsearch_dsl.search import Search
 from django.conf import settings
 from django.http import JsonResponse, HttpResponseForbidden
-from django.utils.html import escape
+from django.contrib.auth import get_user_model
 
 from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView, FormView
-from django.urls import reverse_lazy
+from django.urls import reverse_lazy, reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Document, DocumentVersion, Category
-from .forms import DocumentUploadForm, DocumentUpdateForm
+
+from .formsets import ApprovalStepFormSet
+from .models import Document, DocumentVersion, Category, DocumentAccess, ApprovalDecision, ApprovalStep
+from .forms import DocumentUploadForm, DocumentUpdateForm, DocumentAccessForm, AssignApproversForm
 from .utils import extract_text_from_docx, get_word_diff, classify_document_with_openai, get_diff_description
 import boto3
+from django.views.decorators.http import require_GET
+
+User = get_user_model()
+
+@require_GET
+def get_users_by_position(request):
+    position_id = request.GET.get('position_id')
+    if not position_id:
+        return JsonResponse({'users': []})
+
+    users = User.objects.filter(position_id=position_id).values('id', 'full_name', 'email')
+    user_list = [
+        {'id': u['id'], 'name': f"{u['full_name']} ({u['email']})"}
+        for u in users
+    ]
+    return JsonResponse({'users': user_list})
 
 def get_presigned_url(request, document_id, version_number):
     try:
@@ -42,6 +64,10 @@ class DocumentListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('category')
+
+        user = self.request.user
+        queryset = queryset.filter(Q(created_by=user) | Q(accesses__user=user)).distinct()
+
         category_id = self.request.GET.get('category')
         status = self.request.GET.get('status')
         search = self.request.GET.get('search')
@@ -62,16 +88,51 @@ class DocumentListView(LoginRequiredMixin, ListView):
         context['search_query'] = self.request.GET.get('search', '')
         return context
 
-class DocumentDetailView(LoginRequiredMixin, DetailView):
+class DocumentDetailView(LoginRequiredMixin, DetailView, FormView):
     model = Document
     template_name = 'documents/detail.html'
     context_object_name = 'document'
+    form_class = DocumentAccessForm
+
+    def get_queryset(self):
+        user = self.request.user
+        return Document.objects.filter(Q(created_by=user) | Q(accesses__user=user)).distinct()
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['versions'] = self.object.versions.all()
-        context['last_version'] = self.object.versions.order_by('-version_number').first()
+        document = self.get_object()
+        user = self.request.user
+
+        can_edit = DocumentAccess.objects.filter(
+            document=document,
+            user=user,
+            can_edit=True
+        ).exists() or document.created_by == user or user.is_superuser
+
+        approval_step = document.approval_steps.filter(user=user).first()
+        if approval_step:
+            is_approver = document.status == 'pending_review' and approval_step.order == document.current_step and approval_step.user == user
+        else:
+            is_approver = False
+        context.update({
+            'versions': document.versions.all(),
+            'last_version': document.versions.order_by('-version_number').first(),
+            'accesses': DocumentAccess.objects.filter(document=document).select_related('user'),
+            'form': self.get_form(),
+            'can_edit': can_edit,
+            'is_approver': is_approver
+        })
         return context
+
+    def form_valid(self, form):
+        document = self.get_object()
+        access = form.save(commit=False)
+        access.document = document
+        access.save()
+        return redirect(self.get_success_url())
+
+    def get_success_url(self):
+        return reverse('document_detail', kwargs={'pk': self.get_object().pk})
 
 
 class DocumentUploadView(LoginRequiredMixin, FormView):
@@ -102,7 +163,7 @@ class DocumentUploadView(LoginRequiredMixin, FormView):
         latest_version = document.versions.first()
         next_version = latest_version.version_number + 1 if latest_version else 1
 
-        DocumentVersion.objects.create(
+        document_version = DocumentVersion.objects.create(
             document=document,
             version_number=next_version,
             file=file,
@@ -110,6 +171,8 @@ class DocumentUploadView(LoginRequiredMixin, FormView):
             comment=comment,
             content_text=content
         )
+
+        DocumentAccess.objects.get_or_create(document=document, user=self.request.user, can_edit=True)
 
         return redirect('document_detail', pk=document.pk)
 
@@ -146,8 +209,23 @@ class DocumentUpdateView(LoginRequiredMixin, FormView):
     form_class = DocumentUpdateForm
     template_name = 'documents/update.html'
 
-    def get_object(self, **kwargs):
+    def get_object(self):
         return get_object_or_404(Document, pk=self.kwargs['pk'])
+
+    def dispatch(self, request, *args, **kwargs):
+        document = self.get_object()
+        user = request.user
+
+        has_access = (
+                document.created_by == user or
+                DocumentAccess.objects.filter(document=document, user=user, can_edit=True).exists()
+        )
+
+        if not has_access:
+            messages.error(request, "<UNK> <UNK> <UNK>")
+            return redirect('index')
+
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -189,13 +267,95 @@ class DocumentSearchView(LoginRequiredMixin, TemplateView):
         results = []
 
         if query:
+            # Выполнить поиск в Elasticsearch
             search = DocumentVersionDocument.search().query(
                 "multi_match",
                 query=query,
-                fields=['content_text', 'document_title', 'author']
+                fields=['content_text', 'title', 'author']
             )
-            results = search.execute()
+
+            raw_results = search.execute()
+
+            # Получить document_id из результатов
+            matched_doc_ids = {hit.document_id for hit in raw_results if hit.document_id}
+
+            # Получить ID документов, доступных пользователю
+            accessible_doc_ids = set(
+                DocumentAccess.objects.filter(user=self.request.user)
+                .values_list('document_id', flat=True)
+            )
+
+            # Оставить только те, что пользователь может видеть
+            filtered_results = [hit for hit in raw_results if hit.document_id in accessible_doc_ids]
+
+            results = filtered_results
 
         context['query'] = query
         context['results'] = results
         return context
+
+
+class RevokeAccessView(LoginRequiredMixin, View):
+    def post(self, request, document_id, access_id):
+        document = get_object_or_404(Document, id=document_id)
+
+        if document.created_by != request.user:
+            messages.error(request, "У вас нет прав на удаление доступа.")
+            return redirect('document_detail', pk=document_id)
+
+        access = get_object_or_404(DocumentAccess, id=access_id, document=document)
+        access.delete()
+        messages.success(request, f"Доступ пользователя {access.user} отозван.")
+        return redirect('document_detail', pk=document_id)
+
+
+class AssignDynamicApproversView(View):
+    template_name = 'documents/assign_dynamic_approvers.html'
+
+    def get(self, request, pk):
+        document = get_object_or_404(Document, pk=pk)
+
+        teacher_position = Position.objects.get(name='Преподаватель')
+
+        # Устанавливаем initial, если позиция найдена
+        initial = [{'position': teacher_position.id}] if teacher_position else [{}]
+
+        formset = ApprovalStepFormSet(initial=initial)
+
+        return render(request, self.template_name, {
+            'formset': formset,
+            'document': document
+        })
+
+    def post(self, request, pk):
+        document = get_object_or_404(Document, pk=pk)
+        formset = ApprovalStepFormSet(request.POST)
+
+        if formset.is_valid():
+            # Удалим старые шаги
+            document.approval_steps.all().delete()
+
+            for index, form in enumerate(formset):
+                role = form.cleaned_data['position']
+                user = form.cleaned_data['user']
+
+                ApprovalStep.objects.create(
+                    document=document,
+                    position=role,
+                    user=user,
+                    order=index
+                )
+                DocumentAccess.objects.create(
+                    document=document,
+                    user=user
+                )
+
+            document.status = 'pending_review'
+            document.sent_for_review_at = timezone.now()
+            document.current_step = 0
+            document.save()
+
+            return redirect('document_detail', pk=document.pk)
+
+        return render(request, self.template_name, {'formset': formset, 'document': document})
+

@@ -89,20 +89,21 @@ DATABASES = {
 # USER SETTINGS
 
 AUTH_USER_MODEL = 'users.User'
+LOGIN_URL = '/users/login/'
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    # },
 ]
 
 
@@ -137,8 +138,8 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
-            "access_key": "minioadmin",
-            "secret_key": "minioadmin",
+            "access_key": "admin",
+            "secret_key": "admin123456",
             "bucket_name": "documents",
             "endpoint_url": "http://localhost:9000",
             "region_name": "us-east-1",
@@ -159,5 +160,6 @@ OPENAI_API_KEY = config('OPENAI_API_KEY')
 ELASTICSEARCH_DSL = {
     'default': {
         'hosts': 'http://localhost:9200',
+        'request_timeout': 100,
     },
 }

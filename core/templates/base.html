@@ -11,7 +11,34 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col bg-gradient-to-r from-blue-50 to-indigo-50">
+    {% if messages %}
+        <div id="messages" class="fixed top-4 right-4 space-y-2 z-50">
+            {% for message in messages %}
+                <div class="
+                    p-4 rounded-lg shadow-lg text-white max-w-sm
+                    {% if message.tags == 'success' %}bg-green-500
+                    {% elif message.tags == 'info' %}bg-blue-500
+                    {% elif message.tags == 'warning' %}bg-yellow-500
+                    {% elif message.tags == 'error' %}bg-red-500
+                    {% else %}bg-gray-600{% endif %}
+                ">
+                    {{ message }}
+                    <button onclick="this.parentElement.remove()" class="ml-4 text-white font-bold float-right">×</button>
+                </div>
+            {% endfor %}
+        </div>
 
+        <script>
+            setTimeout(() => {
+                const messages = document.getElementById('messages');
+                if (messages) {
+                    messages.style.transition = "opacity 0.5s";
+                    messages.style.opacity = "0";
+                    setTimeout(() => messages.remove(), 500);
+                }
+            }, 5000); // 5 секунд
+        </script>
+    {% endif %}
     <!-- Header -->
     <header class="bg-white shadow mb-6">
         <div class="container mx-auto px-4 py-4 flex justify-between items-center">
@@ -20,8 +47,11 @@
             </h1>
             {% if user.is_authenticated %}
                 <div>
-                    <span class="text-sm text-gray-700 mr-4">Привет, {{ user.username }}</span>
-                    <a href="{% url 'users:logout' %}" class="text-red-600 hover:underline text-sm">Выйти</a>
+                    <span class="text-sm text-gray-700 mr-4">Привет, {{ user }}</span>
+                    <form action="{% url 'users:logout' %}" method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="text-red-600 hover:underline text-sm">Выйти</button>
+                    </form>
                 </div>
             {% else %}
                 <a href="{% url 'users:login' %}" class="text-blue-600 hover:underline text-sm">Войти</a>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Document, DocumentVersion, Category
+from .models import Document, DocumentVersion, Category, DocumentAccess, ApprovalStep, ApprovalDecision
 
 
 @admin.register(Document)
@@ -17,3 +17,17 @@ class DocumentVersionAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'description')
+
+@admin.register(DocumentAccess)
+class DocumentAccessAdmin(admin.ModelAdmin):
+    list_display = ('document', 'user', 'can_edit')
+
+@admin.register(ApprovalStep)
+class ApprovalStepAdmin(admin.ModelAdmin):
+    list_display = ('document', 'user', 'position', 'order')
+
+
+@admin.register(ApprovalDecision)
+class ApprovalDecisionAdmin(admin.ModelAdmin):
+    list_display = ('step', 'decision', 'comment', 'decided_at')
+

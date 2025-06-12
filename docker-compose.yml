@@ -9,7 +9,7 @@ services:
       - xpack.security.enabled=false
       - xpack.security.transport.ssl.enabled=false
       - xpack.security.http.ssl.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - ES_JAVA_OPTS=-Xms4096m -Xmx4096m
     ports:
       - "9200:9200"
     volumes:
@@ -26,6 +26,20 @@ services:
     depends_on:
       - elasticsearch
     restart: unless-stopped
+  minio:
+    image: minio/minio
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123456
+    command: server --console-address ":9001" /data
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Web Console
+    restart: unless-stopped
 
 volumes:
   esdata:
+  minio_data:

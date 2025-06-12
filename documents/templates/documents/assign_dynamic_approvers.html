@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% load form_extras %}
+{% block content %}
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-bold mb-6 text-gray-800">Назначить подписантов</h2>
+
+        <form method="post" id="approval-form" class="space-y-6">
+            {% csrf_token %}
+            <div id="formset-container" class="space-y-4">
+                {{ formset.management_form }}
+                {% for form in formset %}
+                    <div class="formset-form border border-gray-300 rounded-lg p-4 relative transition-all duration-300 hover:shadow-md">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                {{ form.position.label_tag }}
+                                {{ form.position|add_class:"block w-full px-4 py-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" }}
+                            </div>
+                            <div>
+                                {{ form.user.label_tag }}
+                                {{ form.user|add_class:"block w-full px-4 py-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" }}
+                            </div>
+                        </div>
+                        <button type="button"
+                                class="remove-step absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-xl transition">
+                            &times;
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" id="add-step"
+                    class="flex items-center space-x-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition">
+                <span>+</span>
+                <span>Добавить шаг</span>
+            </button>
+
+            <div class="pt-4">
+                <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition shadow-md">
+                    Сохранить маршрут
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const formsetContainer = document.getElementById("formset-container");
+            const addButton = document.getElementById("add-step");
+            const totalFormsInput = document.querySelector("#id_form-TOTAL_FORMS");
+
+            function loadUsersForPosition(positionSelect) {
+                const selectedId = positionSelect.value;
+                const userSelect = positionSelect.closest('.formset-form').querySelector("select[name$='-user']");
+                if (!selectedId || !userSelect) return;
+
+                fetch(`/documents/ajax/get-users-by-position/?position_id=${selectedId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        userSelect.innerHTML = '<option value="">---------</option>';
+                        data.users.forEach(user => {
+                            const option = new Option(user.name, user.id);
+                            userSelect.appendChild(option);
+                        });
+                    });
+            }
+
+            function attachPositionChangeHandler(positionSelect) {
+                positionSelect.addEventListener("change", function () {
+                    loadUsersForPosition(positionSelect);
+                });
+            }
+
+            function attachRemoveHandler(removeButton) {
+                removeButton.addEventListener("click", function () {
+                    const formDiv = this.closest('.formset-form');
+                    const formCount = parseInt(totalFormsInput.value);
+
+                    if (formCount <= 1) {
+                        alert("Должен быть хотя бы один шаг.");
+                        return;
+                    }
+
+                    formDiv.remove();
+
+                    // Перенумеровать все оставшиеся формы
+                    const forms = formsetContainer.querySelectorAll('.formset-form');
+                    forms.forEach((form, index) => {
+                        const html = form.innerHTML.replace(new RegExp(`form-\\d+`, 'g'), `form-${index}`);
+                        form.innerHTML = html;
+                    });
+
+                    totalFormsInput.value = forms.length;
+
+                    // Переустановить обработчики
+                    forms.forEach(form => {
+                        const position = form.querySelector("select[name$='-position']");
+                        const removeBtn = form.querySelector(".remove-step");
+                        if (position) attachPositionChangeHandler(position);
+                        if (removeBtn) attachRemoveHandler(removeBtn);
+                    });
+                });
+            }
+
+            // Инициализация для текущих форм
+            document.querySelectorAll("select[name$='-position']").forEach(select => {
+                attachPositionChangeHandler(select);
+                if (select.value) loadUsersForPosition(select);
+            });
+
+            document.querySelectorAll(".remove-step").forEach(btn => {
+                attachRemoveHandler(btn);
+            });
+
+            // Добавление новой формы
+            addButton.addEventListener("click", function () {
+                const currentCount = parseInt(totalFormsInput.value);
+                const newIndex = currentCount;
+
+                const lastForm = formsetContainer.querySelector(".formset-form:last-child");
+                const newForm = lastForm.cloneNode(true);
+
+                // Обновляем индексы и очищаем значения
+                newForm.innerHTML = newForm.innerHTML
+                    .replace(/form-(\d+)/g, `form-${newIndex}`);
+
+                newForm.querySelectorAll("select, input").forEach(input => {
+                    input.selectedIndex = 0;
+                    if (input.type !== "hidden") input.value = "";
+                });
+
+                // Очистка пользовательского списка
+                const newUserSelect = newForm.querySelector("select[name$='-user']");
+                if (newUserSelect) newUserSelect.innerHTML = '<option value="">---------</option>';
+
+                formsetContainer.appendChild(newForm);
+                totalFormsInput.value = newIndex + 1;
+
+                // Назначаем обработчики событий
+                const newPosition = newForm.querySelector(`select[name="form-${newIndex}-position"]`);
+                const removeBtn = newForm.querySelector(".remove-step");
+
+                if (newPosition) attachPositionChangeHandler(newPosition);
+                if (removeBtn) attachRemoveHandler(removeBtn);
+            });
+        });
+    </script>
+{% endblock %}

@@ -5,6 +5,10 @@ from django.utils import timezone
 class Position(models.Model):
     name = models.CharField(max_length=100, unique=True)
 
+    class Meta:
+        verbose_name = 'Должность'
+        verbose_name_plural = 'Должности'
+
     def __str__(self):
         return self.name
 
@@ -39,6 +43,10 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
+
+    class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
 
     def __str__(self):
         return self.full_name or  self.email

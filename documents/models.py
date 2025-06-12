@@ -27,8 +27,8 @@ class Document(models.Model):
 
 class ApprovalStep(models.Model):
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='approval_steps')
-    position = models.ForeignKey(Position, on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    position = models.ForeignKey(Position, on_delete=models.CASCADE, verbose_name='Должность')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, verbose_name='Пользователь')
     order = models.PositiveIntegerField()
 
     class Meta:
